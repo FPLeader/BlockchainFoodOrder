@@ -8,6 +8,7 @@ mod food_delivery {
     };
     use ink::storage::Mapping;
 
+    // Define indentifier type
     pub type FoodId = u64;
     pub type OrderId = u64;
     pub type DeliveryId = u64;
@@ -15,6 +16,7 @@ mod food_delivery {
     pub type RestaurantId = u64;
     pub type DeliverId = u64;
 
+    // Event when a customer orders food.
     #[ink(event)]
     pub struct SubmitOrderEvent {
         order_id: OrderId,
@@ -24,13 +26,15 @@ mod food_delivery {
         delivery_address: String,
         phone_number: String,
     }
-
+    
+    // Event when a customer confirms delivery.
     #[ink(event)]
     pub struct AcceptDeliveryEvent {
         delivery_id: DeliveryId,
         order_id: OrderId,
     }
 
+    // Event when a restaurant adds food.
     #[ink(event)]
     pub struct AddFoodEvent {
         food_id: FoodId,
@@ -41,6 +45,7 @@ mod food_delivery {
         eta: u64,
     }
 
+    // Event when a restaurant updates food information.
     #[ink(event)]
     pub struct UpdateFoodEvent {
         food_id: FoodId,
@@ -49,13 +54,15 @@ mod food_delivery {
         price: Balance,
         eta: u64,
     }
-
+    
+    // Event when a restaurant confirms order repuested customer.
     #[ink(event)]
     pub struct ConfirmOrderEvent {
         order_id: OrderId,
         eta: u64,
     }
 
+    // Event when a restaurant requests the delivery.
     #[ink(event)]
     pub struct DeliverOrderEvent {
         order_id: OrderId,
@@ -64,11 +71,13 @@ mod food_delivery {
         delivery_address: String,
     }
 
+    // Event when a deliver picks up the delivery.
     #[ink(event)]
     pub struct PickupDeliveryEvent {
         delivery_id: DeliveryId,
     }
 
+    // Event when a manager add new deliver.
     #[ink(event)]
     pub struct AddDeliverEvent {
         deliver_id: DeliverId,
@@ -77,6 +86,7 @@ mod food_delivery {
         phone_number: String,
     }
 
+    // Event when a manager add new restaurant.
     #[ink(event)]
     pub struct AddRestaurantEvent {
         restaurant_id: RestaurantId,
@@ -85,6 +95,7 @@ mod food_delivery {
         phone_number: String,
     }
 
+    // Enum that order status.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -98,6 +109,7 @@ mod food_delivery {
         DeliveryAcceptted,
     }
 
+    // Enum that delivery status.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -109,6 +121,7 @@ mod food_delivery {
         Acceptted,
     }
 
+    // Customer information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -121,6 +134,7 @@ mod food_delivery {
         pub phone_number: String,
     }
 
+    // Restaurant information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -133,6 +147,7 @@ mod food_delivery {
         pub phone_number: String,
     }
 
+    // Deliver information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -145,6 +160,7 @@ mod food_delivery {
         pub phone_number: String,
     }
 
+    // Food information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -159,6 +175,7 @@ mod food_delivery {
         pub timestamp: Timestamp,
     }
 
+    // Order information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -176,6 +193,7 @@ mod food_delivery {
         pub eta: u64,
     }
 
+    // Delivery informaiton structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
@@ -191,40 +209,63 @@ mod food_delivery {
         pub timestamp: Timestamp,
     }
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    // Main Data Structure.
     #[ink(storage)]
     pub struct FoodDelivery {
+        // Variable that stores contract's manager account.
         pub manager: AccountId,
+        // Variable that stores last food identifier.
         pub food_id: u64,
+        // Variable that stores last order identifier.
         pub order_id: u64,
+        // Variable that stores last deliver identifier.
         pub delivery_id: u64,
+        // Variable that stores last customer identifier.
         pub customer_id: u64,
+        // Variable taht stores last restaurant identifier.
         pub restaurant_id: u64,
+        // Variable that stores last delivery identifier.
         pub deliver_id: u64,
+        // Variable that stores customer data.
         pub customers: Mapping<CustomerId, Customer>,
+        // Variable that stores restaurant data.
         pub restaurants: Mapping<RestaurantId, Restaurant>,
+        // Variable that stores deliver data.
         pub delivers: Mapping<DeliverId, Deliver>,
+        // Variable that stores food data.
         pub food_data: Mapping<FoodId, Food>,
+        // Variable that stores order data.
         pub order_data: Mapping<OrderId, Order>,
+        // Variable that stores delivery data.
         pub delivery_data: Mapping<DeliveryId, Delivery>,
+        // Variable that stores food identifiers posted by the restaurant.
         pub restaurant_food_data: Mapping<RestaurantId, Vec<FoodId>>,
+        // Variable that stores order identifiers placed in a restaurant.
         pub restaurant_order_data: Mapping<RestaurantId, Vec<OrderId>>,
+        // Variable that stores delivery identifiers requested by the restaurant.
         pub restaurant_delivery_data: Mapping<RestaurantId, Vec<DeliveryId>>,
+        // Variable that stores order identifiers requested by the customer.
         pub customer_order_data: Mapping<CustomerId, Vec<OrderId>>,
+        // Variable that stores delivery indentifiers.
         pub customer_delivery_data: Mapping<CustomerId, Vec<DeliveryId>>,
+        // Variable that stores delivery ordered to the dispatcher.
         pub deliver_delivery_data: Mapping<DeliverId, Vec<DeliveryId>>,
+        // Variable that stores customer's account.
         pub customer_whitelist: Vec<AccountId>,
+        // Variable that stores restaurant's account.
         pub restaurant_whitelist: Vec<AccountId>,
+        // Variable that stores deliver's account.
         pub deliver_whitelist: Vec<AccountId>,
+        // Variable that stores customer account and customer identifier mapping.
         pub customer_account_id: Mapping<AccountId, CustomerId>,
+        // Variable that stores restaurant account and restaurant identifier mapping.
         pub restaurant_account_id: Mapping<AccountId, RestaurantId>,
+        // Variable that stores deliver account and deliver identifier mapping.
         pub deliver_account_id: Mapping<AccountId, DeliverId>,
     }
 
     impl FoodDelivery {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+        // Constructor that initializes the data.
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
@@ -256,15 +297,8 @@ mod food_delivery {
             }
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new()
-        }
-
         // Customer's function.
+        // Function that add new customer.
         #[ink(message)]
         pub fn add_customer(
             &mut self,
@@ -287,8 +321,10 @@ mod food_delivery {
             self.customer_account_id.insert(&customer_account, &customer_id);
             customer
         }
-    
-        #[ink(message)]
+        
+        // Customer's function.
+        // Function taht request an order.
+        #[ink(message, payable)]
         pub fn submit_order(
             &mut self, 
             food_id: FoodId,
@@ -337,8 +373,10 @@ mod food_delivery {
             });
             order
         }
-    
-        #[ink(message)]
+        
+        // Customer's function.
+        // Function that confirm a delivery.
+        #[ink(message, payable)]
         pub fn confrim_delivery(
             &mut self,
             delivery_id: DeliveryId,
@@ -378,6 +416,7 @@ mod food_delivery {
         }
         
         // Restaurant's function.
+        // Function that add new food with information.
         #[ink(message)]
         pub fn add_food(
             &mut self,
@@ -415,7 +454,9 @@ mod food_delivery {
             });
             food
         }
-    
+        
+        // Restaurant's function.
+        // Function that update the food inforamtion using food_id.
         #[ink(message)]
         pub fn update_food(
             &mut self,
@@ -451,6 +492,8 @@ mod food_delivery {
             food
         }
     
+        // Restaurant's function.
+        // Function that confirm the order requested by customer.
         #[ink(message)]
         pub fn confirm_order(
             &mut self,
@@ -476,6 +519,8 @@ mod food_delivery {
             true
         }
     
+        // Restaurant's function.
+        // Function that request a delivery.
         #[ink(message)]
         pub fn deliver_order(
             &mut self,
@@ -524,6 +569,7 @@ mod food_delivery {
         }
         
         // Deliver's function.
+        // Function that pick up the delivery requested by restaurant.
         #[ink(message)]
         pub fn pickup_delivery(
             &mut self,
@@ -546,6 +592,7 @@ mod food_delivery {
         }
         
         // Manager's function.
+        // Function that add new restaurant.
         #[ink(message)]
         pub fn add_restaurant(
             &mut self,
@@ -580,6 +627,8 @@ mod food_delivery {
             restaurant
         }
     
+        // Manager's function.
+        // Function that add new Deliver.
         #[ink(message)]
         pub fn add_deliver(
             &mut self,
@@ -614,6 +663,8 @@ mod food_delivery {
             deliver
         }
     
+        // Manager's function.
+        // Function that change manager's account.
         #[ink(message)]
         pub fn change_manager(
             &mut self,
@@ -624,7 +675,8 @@ mod food_delivery {
             self.manager = new_account;
             true
         }
-    
+        
+        // Function that get eta deadline using order identifier.
         #[ink(message)]
         pub fn get_eta(&self, order_id: OrderId) -> u64 {
             assert!(self.order_data.contains(&order_id), "Order does not exist!");
@@ -638,13 +690,15 @@ mod food_delivery {
                 0
             }
         }
-    
+
+        // Function that get order information using order identifier.
         #[ink(message)]
         pub fn get_order_from_id(&self, order_id: OrderId) -> Order {
             assert!(self.order_data.contains(&order_id), "Order does not exist!");
             self.order_data.get(&order_id).unwrap()
         }
     
+        // Function that get all order information placed in a restaurant.
         #[ink(message)]
         pub fn get_order_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Order> {
             assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
@@ -655,7 +709,8 @@ mod food_delivery {
             }
             order_vec       
         }
-    
+        
+        // Function that get all order information placed by customers.
         #[ink(message)]
         pub fn get_order_from_customer(&self, customer_id: CustomerId) -> Vec<Order> {
             assert!(self.customers.contains(&customer_id), "Restaurant does not exist!");
@@ -666,7 +721,8 @@ mod food_delivery {
             }
             order_vec  
         }
-    
+        
+        // Function that get all orders from A to B.
         #[ink(message)]
         pub fn get_order_all(&self, from: u64, to: u64) -> Vec<Order> {
             let mut order_vec: Vec<Order> = Vec::new();
@@ -681,13 +737,15 @@ mod food_delivery {
             }
             order_vec
         }
-    
+        
+        // Function that get food information using food identifier.
         #[ink(message)]
         pub fn get_food_from_id(&self, food_id: FoodId) -> Food {
             assert!(self.food_data.contains(&food_id), "Order does not exist!");
             self.food_data.get(&food_id).unwrap()
         }
-    
+        
+        // Function that get all food information posted by the restaurant.
         #[ink(message)]
         pub fn get_food_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Food> {
             assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
@@ -699,6 +757,7 @@ mod food_delivery {
             food_vec        
         }
     
+        // Function that get all food information from A to B.
         #[ink(message)]
         pub fn get_food_all(&self, from: u64, to: u64) -> Vec<Food> {
             let mut food_vec: Vec<Food> = Vec::new();
@@ -714,12 +773,14 @@ mod food_delivery {
             food_vec
         }
     
+        // Function that get delivery information using delivery identifier.
         #[ink(message)]
         pub fn get_delivery_from_id(&self, delivery_id: DeliveryId) -> Delivery {
             assert!(self.delivery_data.contains(&delivery_id), "Order does not exist!");
             self.delivery_data.get(&delivery_id).unwrap()
         }
-    
+        
+        // Function that get all delivery information ordered form the forwarder.
         #[ink(message)]
         pub fn get_delivery_from_deliver(&self, deliver_id: DeliverId) -> Vec<Delivery> {
             assert!(self.delivers.contains(&deliver_id), "Deliver does not exist!");
@@ -731,6 +792,7 @@ mod food_delivery {
             deliver_vec
         }
 
+        // Function that get all delivery information requested by restaurant.
         #[ink(message)]
         pub fn get_delivery_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Delivery> {
             assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
@@ -741,7 +803,8 @@ mod food_delivery {
             }
             deliver_vec     
         }
-
+        
+        // Function taht get all delivery information delivered to customer.
         #[ink(message)]
         pub fn get_delivery_from_customer(&self, customer_id: CustomerId) -> Vec<Delivery> {
             assert!(self.customers.contains(&customer_id), "Customer does not exist!");
@@ -753,6 +816,7 @@ mod food_delivery {
             deliver_vec       
         }
 
+        // Function that get all delivery information.
         #[ink(message)]
         pub fn get_delivery_all(&self, from: u64, to: u64) -> Vec<Delivery> {
             let mut delivery_vec: Vec<Delivery> = Vec::new();
