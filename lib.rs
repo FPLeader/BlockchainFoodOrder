@@ -248,7 +248,7 @@ mod food_delivery {
         pub customer_order_data: Mapping<CustomerId, Vec<OrderId>>,
         // Variable that stores delivery indentifiers.
         pub customer_delivery_data: Mapping<CustomerId, Vec<DeliveryId>>,
-        // Variable that stores delivery ordered to the dispatcher.
+        // Variable that stores delivery ordered to the couriers.
         pub courier_delivery_data: Mapping<CourierId, Vec<DeliveryId>>,
         // Variable that stores customer's account.
         pub customer_whitelist: Vec<AccountId>,
