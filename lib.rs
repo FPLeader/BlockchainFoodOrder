@@ -8,13 +8,13 @@ mod food_delivery {
     };
     use ink::storage::Mapping;
 
-    // Define indentifier type
+    // Define identifier type
     pub type FoodId = u64;
     pub type OrderId = u64;
     pub type DeliveryId = u64;
     pub type CustomerId = u64;
     pub type RestaurantId = u64;
-    pub type DeliverId = u64;
+    pub type CourierId = u64;
 
     // Event when a customer orders food.
     #[ink(event)]
@@ -71,18 +71,18 @@ mod food_delivery {
         delivery_address: String,
     }
 
-    // Event when a deliver picks up the delivery.
+    // Event when a courier picks up the delivery.
     #[ink(event)]
     pub struct PickupDeliveryEvent {
         delivery_id: DeliveryId,
     }
 
-    // Event when a manager add new deliver.
+    // Event when a manager add new courier.
     #[ink(event)]
-    pub struct AddDeliverEvent {
-        deliver_id: DeliverId,
-        deliver_name: String,
-        deliver_address: String,
+    pub struct AddCourierEvent {
+        courier_id: CourierId,
+        courier_name: String,
+        courier_address: String,
         phone_number: String,
     }
 
@@ -147,16 +147,16 @@ mod food_delivery {
         pub phone_number: String,
     }
 
-    // Deliver information structure.
+    // Courier information structure.
     #[derive(scale::Decode, scale::Encode, Debug, Clone, Eq, PartialEq)]
     #[cfg_attr(
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
-    pub struct Deliver {
-        pub deliver_account: AccountId,
-        pub deliver_name: String,
-        pub deliver_address: String,
+    pub struct Courier {
+        pub courier_account: AccountId,
+        pub courier_name: String,
+        pub courier_address: String,
         pub phone_number: String,
     }
 
@@ -185,7 +185,7 @@ mod food_delivery {
         pub food_id: FoodId,
         pub restaurant_id: RestaurantId,
         pub customer_id: CustomerId,
-        pub deliver_id: DeliveryId,
+        pub courier_id: CourierId,
         pub delivery_address: String,
         pub status: OrderStatus,
         pub timestamp: Timestamp,
@@ -203,7 +203,7 @@ mod food_delivery {
         pub order_id: OrderId,
         pub restaurant_id: RestaurantId,
         pub customer_id: CustomerId,
-        pub deliver_id: DeliverId,
+        pub courier_id: CourierId,
         pub delivery_address: String,
         pub status: DeliveryStatus,
         pub timestamp: Timestamp,
@@ -218,20 +218,20 @@ mod food_delivery {
         pub food_id: u64,
         // Variable that stores last order identifier.
         pub order_id: u64,
-        // Variable that stores last deliver identifier.
+        // Variable that stores last delivery identifier.
         pub delivery_id: u64,
         // Variable that stores last customer identifier.
         pub customer_id: u64,
         // Variable taht stores last restaurant identifier.
         pub restaurant_id: u64,
-        // Variable that stores last delivery identifier.
-        pub deliver_id: u64,
+        // Variable that stores last courier identifier.
+        pub courier_id: u64,
         // Variable that stores customer data.
         pub customers: Mapping<CustomerId, Customer>,
         // Variable that stores restaurant data.
         pub restaurants: Mapping<RestaurantId, Restaurant>,
-        // Variable that stores deliver data.
-        pub delivers: Mapping<DeliverId, Deliver>,
+        // Variable that stores courier data.
+        pub couriers: Mapping<CourierId, Courier>,
         // Variable that stores food data.
         pub food_data: Mapping<FoodId, Food>,
         // Variable that stores order data.
@@ -249,19 +249,19 @@ mod food_delivery {
         // Variable that stores delivery indentifiers.
         pub customer_delivery_data: Mapping<CustomerId, Vec<DeliveryId>>,
         // Variable that stores delivery ordered to the dispatcher.
-        pub deliver_delivery_data: Mapping<DeliverId, Vec<DeliveryId>>,
+        pub courier_delivery_data: Mapping<CourierId, Vec<DeliveryId>>,
         // Variable that stores customer's account.
         pub customer_whitelist: Vec<AccountId>,
         // Variable that stores restaurant's account.
         pub restaurant_whitelist: Vec<AccountId>,
-        // Variable that stores deliver's account.
-        pub deliver_whitelist: Vec<AccountId>,
+        // Variable that stores courier's account.
+        pub courier_whitelist: Vec<AccountId>,
         // Variable that stores customer account and customer identifier mapping.
         pub customer_account_id: Mapping<AccountId, CustomerId>,
         // Variable that stores restaurant account and restaurant identifier mapping.
         pub restaurant_account_id: Mapping<AccountId, RestaurantId>,
-        // Variable that stores deliver account and deliver identifier mapping.
-        pub deliver_account_id: Mapping<AccountId, DeliverId>,
+        // Variable that stores courier account and courier identifier mapping.
+        pub courier_account_id: Mapping<AccountId, CourierId>,
     }
 
     impl FoodDelivery {
@@ -272,13 +272,13 @@ mod food_delivery {
                 manager: Self::env().caller(),
                 food_id: 1,
                 order_id: 1,
-                deliver_id: 1,
+                delivery_id: 1,
                 customer_id: 1,
                 restaurant_id: 1,
-                delivery_id: 1,
+                courier_id: 1,
                 customers: Mapping::default(),
                 restaurants: Mapping::default(),
-                delivers: Mapping::default(),
+                couriers: Mapping::default(),
                 food_data: Mapping::default(),
                 order_data: Mapping::default(),
                 delivery_data: Mapping::default(),
@@ -287,13 +287,13 @@ mod food_delivery {
                 restaurant_delivery_data: Mapping::default(),
                 customer_order_data: Mapping::default(),
                 customer_delivery_data: Mapping::default(),
-                deliver_delivery_data: Mapping::default(),
+                courier_delivery_data: Mapping::default(),
                 customer_whitelist: Vec::new(),
                 restaurant_whitelist: Vec::new(),
-                deliver_whitelist: Vec::new(),
+                courier_whitelist: Vec::new(),
                 customer_account_id: Mapping::default(),
                 restaurant_account_id: Mapping::default(),
-                deliver_account_id: Mapping::default(),
+                courier_account_id: Mapping::default(),
             }
         }
 
@@ -334,7 +334,7 @@ mod food_delivery {
             let customer_account = Self::env().caller();
             assert!(self.customer_whitelist.contains(&customer_account), "only customer can submit order!");
             let customer_id = self.customer_account_id.get(&customer_account).unwrap();
-            let deliver_id = 0;
+            let courier_id = 0;
             let price = Self::env().transferred_value();
             assert!(self.food_data.get(&food_id).unwrap().price == price, "you must pay same of price!");
             let eta = 0;
@@ -344,7 +344,7 @@ mod food_delivery {
                 food_id,
                 restaurant_id,
                 customer_id,
-                deliver_id,
+                courier_id,
                 delivery_address,
                 status,
                 timestamp,
@@ -400,11 +400,11 @@ mod food_delivery {
                 delivery_id,
             });
             
-            let deliver_amount = _price / 10;
-            let restaurant_amount = _price - deliver_amount;
-            let deliver_account = self.delivers.get(&self.order_data.get(&order_id).unwrap().deliver_id).unwrap().deliver_account;
+            let courier_amount = _price / 10;
+            let restaurant_amount = _price - courier_amount;
+            let courier_account = self.couriers.get(&self.order_data.get(&order_id).unwrap().courier_id).unwrap().courier_account;
             let restaurant_account = self.restaurants.get(&self.order_data.get(&order_id).unwrap().restaurant_id).unwrap().restaurant_account;
-            if Self::env().transfer(deliver_account, deliver_amount).is_err() {
+            if Self::env().transfer(courier_account, courier_amount).is_err() {
                 false
             } else {
                 if Self::env().transfer(restaurant_account, restaurant_amount).is_err() {
@@ -540,7 +540,7 @@ mod food_delivery {
             self.delivery_id += 1;
             let restaurant_id = self.order_data.get(&order_id).unwrap().restaurant_id;
             let customer_id = self.order_data.get(&order_id).unwrap().customer_id;
-            let deliver_id = 0;
+            let courier_id = 0;
             let delivery_address = self.order_data.get(&order_id).unwrap().delivery_address;
             let status = DeliveryStatus::Waiting;
             let timestamp = Self::env().block_timestamp();
@@ -548,7 +548,7 @@ mod food_delivery {
                 order_id,
                 restaurant_id,
                 customer_id,
-                deliver_id,
+                courier_id,
                 delivery_address,
                 status,
                 timestamp,
@@ -556,8 +556,13 @@ mod food_delivery {
             self.delivery_data.insert(&delivery_id, &delivery);
             let mut restaurant_delivery_vec = self.restaurant_delivery_data.get(&restaurant_id).unwrap_or(Vec::new());
             restaurant_delivery_vec.push(delivery_id);
+            self.restaurant_delivery_data.insert(&restaurant_id, &restaurant_delivery_vec);
             let mut customer_delivery_vec = self.customer_delivery_data.get(&customer_id).unwrap_or(Vec::new());
             customer_delivery_vec.push(delivery_id);
+            self.customer_delivery_data.insert(&customer_id, &customer_delivery_vec);
+            let mut courier_delivery_vec = self.courier_delivery_data.get(&courier_id).unwrap_or(Vec::new());
+            courier_delivery_vec.push(delivery_id);
+            self.courier_delivery_data.insert(&courier_id, &courier_delivery_vec);
             let delivery_address = self.order_data.get(&order_id).unwrap().delivery_address;
             Self::env().emit_event(DeliverOrderEvent {
                 order_id,
@@ -568,7 +573,7 @@ mod food_delivery {
             delivery
         }
         
-        // Deliver's function.
+        // Courier's function.
         // Function that pick up the delivery requested by restaurant.
         #[ink(message)]
         pub fn pickup_delivery(
@@ -576,7 +581,7 @@ mod food_delivery {
             delivery_id: DeliveryId,
         ) -> bool {
             let caller = Self::env().caller();
-            assert!(self.deliver_whitelist.contains(&caller), "only deliver can confirm devliery");
+            assert!(self.courier_whitelist.contains(&caller), "only courier can confirm devliery");
             assert!(self.delivery_data.get(&delivery_id).unwrap().status == DeliveryStatus::Waiting, "this delivery is already picked up!");
             let mut delivery = self.delivery_data.get(&delivery_id).unwrap();
             let status = DeliveryStatus::PickUp;
@@ -628,39 +633,39 @@ mod food_delivery {
         }
     
         // Manager's function.
-        // Function that add new Deliver.
+        // Function that add new Courier.
         #[ink(message)]
-        pub fn add_deliver(
+        pub fn add_courier(
             &mut self,
-            deliver_account: AccountId,
-            deliver_name: String,
-            deliver_address: String,
+            courier_account: AccountId,
+            courier_name: String,
+            courier_address: String,
             phone_number: String,
-        ) -> Deliver {
+        ) -> Courier {
             let caller = Self::env().caller();
-            assert!(caller == self.manager, "Only manager can add deliver!");
-            assert!(!self.deliver_whitelist.contains(&deliver_account), "already exist deliver!");
-            let deliver_id = self.deliver_id;
-            self.deliver_id += 1;
-            let deliver = Deliver {
-                deliver_account,
-                deliver_name,
-                deliver_address,
+            assert!(caller == self.manager, "Only manager can add courier!");
+            assert!(!self.courier_whitelist.contains(&courier_account), "already exist courier!");
+            let courier_id = self.courier_id;
+            self.courier_id += 1;
+            let courier = Courier {
+                courier_account,
+                courier_name,
+                courier_address,
                 phone_number,
             };
-            self.delivers.insert(&deliver_id, &deliver);
-            self.deliver_account_id.insert(&deliver_account, &deliver_id);
-            self.deliver_whitelist.push(deliver_account);
-            let deliver_name = self.delivers.get(&deliver_id).unwrap().deliver_name;
-            let deliver_address = self.delivers.get(&deliver_id).unwrap().deliver_address;
-            let phone_number = self.delivers.get(&deliver_id).unwrap().phone_number;
-            Self::env().emit_event(AddDeliverEvent {
-                deliver_id,
-                deliver_name,
-                deliver_address,
+            self.couriers.insert(&courier_id, &courier);
+            self.courier_account_id.insert(&courier_account, &courier_id);
+            self.courier_whitelist.push(courier_account);
+            let courier_name = self.couriers.get(&courier_id).unwrap().courier_name;
+            let courier_address = self.couriers.get(&courier_id).unwrap().courier_address;
+            let phone_number = self.couriers.get(&courier_id).unwrap().phone_number;
+            Self::env().emit_event(AddCourierEvent {
+                courier_id,
+                courier_name,
+                courier_address,
                 phone_number,
             });
-            deliver
+            courier
         }
     
         // Manager's function.
@@ -782,14 +787,14 @@ mod food_delivery {
         
         // Function that get all delivery information ordered form the forwarder.
         #[ink(message)]
-        pub fn get_delivery_from_deliver(&self, deliver_id: DeliverId) -> Vec<Delivery> {
-            assert!(self.delivers.contains(&deliver_id), "Deliver does not exist!");
-            let delivery_data = self.deliver_delivery_data.get(&deliver_id).unwrap_or(Vec::new());
-            let mut deliver_vec = Vec::new();
+        pub fn get_delivery_from_courier(&self, courier_id: CourierId) -> Vec<Delivery> {
+            assert!(self.couriers.contains(&courier_id), "Courier does not exist!");
+            let delivery_data = self.courier_delivery_data.get(&courier_id).unwrap_or(Vec::new());
+            let mut delivery_vec = Vec::new();
             for i in delivery_data.iter() {
-                deliver_vec.push(self.delivery_data.get(&i).unwrap());
+                delivery_vec.push(self.delivery_data.get(&i).unwrap());
             }
-            deliver_vec
+            delivery_vec
         }
 
         // Function that get all delivery information requested by restaurant.
@@ -809,11 +814,11 @@ mod food_delivery {
         pub fn get_delivery_from_customer(&self, customer_id: CustomerId) -> Vec<Delivery> {
             assert!(self.customers.contains(&customer_id), "Customer does not exist!");
             let delivery_data = self.customer_delivery_data.get(&customer_id).unwrap_or(Vec::new());
-            let mut deliver_vec = Vec::new();
+            let mut delivery_vec = Vec::new();
             for i in delivery_data.iter() {
-                deliver_vec.push(self.delivery_data.get(&i).unwrap());
+                delivery_vec.push(self.delivery_data.get(&i).unwrap());
             }
-            deliver_vec       
+            delivery_vec       
         }
 
         // Function that get all delivery information.
