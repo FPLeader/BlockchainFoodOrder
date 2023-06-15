@@ -387,8 +387,8 @@ mod food_delivery {
             eta: u64,
         ) -> Food {
             let restaurant_account = Self::env().caller();
-            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can add food!");
+            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             let food_id = self.food_id;
             self.food_id += 1;
             let food = Food {
@@ -426,8 +426,9 @@ mod food_delivery {
             eta: u64,
         ) -> Food {
             let restaurant_account = Self::env().caller();
-            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can update food!");
+            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
+            assert!(self.food_data.contains(&food_id), "Food not exist!");
             assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this food!");
             let food = Food {
                 food_name,
@@ -554,7 +555,7 @@ mod food_delivery {
             phone_number: String,
         ) -> Restaurant {
             let caller = Self::env().caller();
-            assert!(caller != self.manager, "Only manager can add restaurant!");
+            assert!(caller == self.manager, "Only manager can add restaurant!");
             assert!(!self.restaurant_whitelist.contains(&restaurant_account), "already exist restaurant!");
             let restaurant_id = self.restaurant_id;
             self.restaurant_id += 1;
