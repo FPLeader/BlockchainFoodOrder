@@ -307,7 +307,10 @@ mod food_delivery {
             phone_number: String
         ) -> Customer {
             let customer_account = Self::env().caller();
-            assert!(!self.customer_whitelist.contains(&customer_account), "alread exist customer!");
+            assert!(!self.customer_whitelist.contains(&customer_account), "Alread exist customer!");
+            assert!(customer_name.len() > 0, "Customer name must be at least 1 characters!");
+            assert!(customer_address.len() > 3, "Customer address must be at least 4 characters!");
+            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
             let customer = Customer {
                 customer_account,
                 customer_name,
@@ -328,15 +331,17 @@ mod food_delivery {
         pub fn submit_order(
             &mut self, 
             food_id: FoodId,
-            restaurant_id: RestaurantId,
             delivery_address: String,
         ) -> Order {
             let customer_account = Self::env().caller();
-            assert!(self.customer_whitelist.contains(&customer_account), "only customer can submit order!");
+            assert!(self.customer_whitelist.contains(&customer_account), "Only customer can submit order!");
+            assert!(self.food_data.contains(&food_id), "Food not exist!");
+            assert!(delivery_address.len() > 3, "Delivery address must be at least 4 characters!");
             let customer_id = self.customer_account_id.get(&customer_account).unwrap();
+            let restaurant_id = self.food_data.get(&food_id).unwrap().restaurant_id;
             let courier_id = 0;
             let price = Self::env().transferred_value();
-            assert!(self.food_data.get(&food_id).unwrap().price == price, "you must pay same of price!");
+            assert!(self.food_data.get(&food_id).unwrap().price == price, "You must pay same of price!");
             let eta = 0;
             let timestamp = Self::env().block_timestamp();
             let status = OrderStatus::OrderSubmitted;
@@ -384,6 +389,7 @@ mod food_delivery {
             let customer_account = Self::env().caller();
             assert!(self.customer_whitelist.contains(&customer_account), "only customer can submit order!");
             let customer_id = self.customer_account_id.get(&customer_account).unwrap();
+            assert!(self.delivery_data.contains(&delivery_id), "Delivery not exist!");
             let order_id = self.delivery_data.get(&delivery_id).unwrap().order_id;
             assert!(self.order_data.get(&order_id).unwrap().customer_id == customer_id, "not customer of this order!");
             let mut order = self.order_data.get(&order_id).unwrap();
@@ -427,6 +433,8 @@ mod food_delivery {
         ) -> Food {
             let restaurant_account = Self::env().caller();
             assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can add food!");
+            assert!(food_name.len() > 3, "Food name must be at least 4 characters!");
+            assert!(description.len() > 3, "Food description must be at least 4 characters!");
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             let food_id = self.food_id;
             self.food_id += 1;
@@ -471,6 +479,8 @@ mod food_delivery {
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             assert!(self.food_data.contains(&food_id), "Food not exist!");
             assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this food!");
+            assert!(food_name.len() > 3, "Food name must be at least 4 characters!");
+            assert!(description.len() > 3, "Food description must be at least 4 characters!");
             let food = Food {
                 food_name,
                 restaurant_id,
@@ -499,11 +509,11 @@ mod food_delivery {
             &mut self,
             order_id: OrderId,
         ) -> bool {
-            assert!(self.order_data.contains(&order_id), "Order not exist!");
             let restaurant_account = Self::env().caller();
-            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
-            let food_id = self.order_data.get(&order_id).unwrap().food_id;
             assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can confirm order!");
+            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
+            assert!(self.order_data.contains(&order_id), "Order not exist!");
+            let food_id = self.order_data.get(&order_id).unwrap().food_id;
             assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this order!");
             let mut order = self.order_data.get(&order_id).unwrap();
             let status = OrderStatus::OrderConfirmed;
@@ -526,11 +536,12 @@ mod food_delivery {
             &mut self,
             order_id: OrderId,
         ) -> Delivery {
-            assert!(self.order_data.contains(&order_id), "Order not exist!");
             let restaurant_account = Self::env().caller();
-            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
-            let food_id = self.order_data.get(&order_id).unwrap().food_id;
             assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can confirm order!");
+            let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
+            assert!(self.order_data.contains(&order_id), "Order not exist!");
+            assert!(self.order_data.get(&order_id).unwrap().status == OrderStatus::OrderConfirmed, "This order is not confirmed!");
+            let food_id = self.order_data.get(&order_id).unwrap().food_id;
             assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this order!");
             let mut order = self.order_data.get(&order_id).unwrap();
             let status = OrderStatus::WaitingDeliver;
@@ -581,8 +592,9 @@ mod food_delivery {
             delivery_id: DeliveryId,
         ) -> bool {
             let caller = Self::env().caller();
-            assert!(self.courier_whitelist.contains(&caller), "only courier can confirm devliery");
-            assert!(self.delivery_data.get(&delivery_id).unwrap().status == DeliveryStatus::Waiting, "this delivery is already picked up!");
+            assert!(self.courier_whitelist.contains(&caller), "Only courier can confirm devliery!");
+            assert!(self.delivery_data.contains(&delivery_id), "Delivery not exist!");
+            assert!(self.delivery_data.get(&delivery_id).unwrap().status == DeliveryStatus::Waiting, "This delivery is already picked up!");
             let mut delivery = self.delivery_data.get(&delivery_id).unwrap();
             let status = DeliveryStatus::PickUp;
             delivery.status = status;
@@ -608,7 +620,10 @@ mod food_delivery {
         ) -> Restaurant {
             let caller = Self::env().caller();
             assert!(caller == self.manager, "Only manager can add restaurant!");
-            assert!(!self.restaurant_whitelist.contains(&restaurant_account), "already exist restaurant!");
+            assert!(!self.restaurant_whitelist.contains(&restaurant_account), "Already exist restaurant!");
+            assert!(restaurant_name.len() > 3, "Restaurant name must be at least 4 characters!");
+            assert!(restaurant_address.len() > 3, "Restaurant adddress must be at least 4 characters!");
+            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
             let restaurant_id = self.restaurant_id;
             self.restaurant_id += 1;
             let restaurant = Restaurant {
@@ -644,7 +659,10 @@ mod food_delivery {
         ) -> Courier {
             let caller = Self::env().caller();
             assert!(caller == self.manager, "Only manager can add courier!");
-            assert!(!self.courier_whitelist.contains(&courier_account), "already exist courier!");
+            assert!(!self.courier_whitelist.contains(&courier_account), "Already exist courier!");
+            assert!(courier_name.len() > 3, "Courier name must be at least 4 characters!");
+            assert!(courier_address.len() > 3, "Courier adddress must be at least 4 characters!");
+            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
             let courier_id = self.courier_id;
             self.courier_id += 1;
             let courier = Courier {
