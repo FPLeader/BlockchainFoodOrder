@@ -371,8 +371,8 @@ mod food_delivery {
         
         // Customer's function.
         // Function that confirm a delivery.
-        #[ink(message, payable)]
-        pub fn confrim_delivery(
+        #[ink(message)]
+        pub fn confirm_delivery(
             &mut self,
             delivery_id: DeliveryId,
         ) -> bool {
@@ -399,8 +399,8 @@ mod food_delivery {
             
             let courier_amount = _price / 10;
             let restaurant_amount = _price - courier_amount;
-            let courier_account = self.couriers.get(&self.order_data.get(&order_id).unwrap().courier_id).unwrap().courier_account;
-            let restaurant_account = self.restaurants.get(&self.order_data.get(&order_id).unwrap().restaurant_id).unwrap().restaurant_account;
+            let courier_account = self.couriers.get(&self.delivery_data.get(&delivery_id).unwrap().courier_id).unwrap().courier_account;
+            let restaurant_account = self.restaurants.get(&self.delivery_data.get(&delivery_id).unwrap().restaurant_id).unwrap().restaurant_account;
             if Self::env().transfer(courier_account, courier_amount).is_err() {
                 false
             } else {
@@ -596,6 +596,7 @@ mod food_delivery {
             let order_status = OrderStatus::OrderDelivered;
             let mut order = self.order_data.get(&order_id).unwrap();
             order.status = order_status;
+            order.courier_id = courier_id;
             self.order_data.insert(&order_id, &order);
             Self::env().emit_event(PickupDeliveryEvent{delivery_id});
             true
@@ -844,6 +845,22 @@ mod food_delivery {
                 }
             }
             delivery_vec
+        }
+
+        // Function that get all restaurant information.
+        #[ink(message)]
+        pub fn get_restaurant_all(&self, from: u64, to:u64) -> Vec<Restaurant> {
+            let mut restaurant_vec: Vec<Restaurant> = Vec::new();
+            if to < self.delivery_id {
+                for i in from..to {
+                    restaurant_vec.push(self.restaurants.get(&i).unwrap());
+                }
+            } else {
+                for i in from..self.delivery_id {
+                    restaurant_vec.push(self.restaurants.get(&i).unwrap());
+                }
+            }
+            restaurant_vec
         }
     }
 }
