@@ -250,12 +250,6 @@ mod food_delivery {
         pub customer_delivery_data: Mapping<CustomerId, Vec<DeliveryId>>,
         // Variable that stores delivery ordered to the couriers.
         pub courier_delivery_data: Mapping<CourierId, Vec<DeliveryId>>,
-        // Variable that stores customer's account.
-        pub customer_whitelist: Vec<AccountId>,
-        // Variable that stores restaurant's account.
-        pub restaurant_whitelist: Vec<AccountId>,
-        // Variable that stores courier's account.
-        pub courier_whitelist: Vec<AccountId>,
         // Variable that stores customer account and customer identifier mapping.
         pub customer_account_id: Mapping<AccountId, CustomerId>,
         // Variable that stores restaurant account and restaurant identifier mapping.
@@ -288,9 +282,6 @@ mod food_delivery {
                 customer_order_data: Mapping::default(),
                 customer_delivery_data: Mapping::default(),
                 courier_delivery_data: Mapping::default(),
-                customer_whitelist: Vec::new(),
-                restaurant_whitelist: Vec::new(),
-                courier_whitelist: Vec::new(),
                 customer_account_id: Mapping::default(),
                 restaurant_account_id: Mapping::default(),
                 courier_account_id: Mapping::default(),
@@ -307,10 +298,10 @@ mod food_delivery {
             phone_number: String
         ) -> Customer {
             let customer_account = Self::env().caller();
-            assert!(!self.customer_whitelist.contains(&customer_account), "Alread exist customer!");
-            assert!(customer_name.len() > 0, "Customer name must be at least 1 characters!");
-            assert!(customer_address.len() > 3, "Customer address must be at least 4 characters!");
-            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
+            assert!(!self.customer_account_id.contains(&customer_account), "Customer already exists");
+            assert!(customer_name.len() > 0, "Customer name must not be empty");
+            assert!(customer_address.len() > 0, "Customer address must not be empty");
+            assert!(phone_number.len() > 0, "Phone number must not be empty");
             let customer = Customer {
                 customer_account,
                 customer_name,
@@ -320,7 +311,6 @@ mod food_delivery {
             let customer_id = self.customer_id;
             self.customer_id += 1;
             self.customers.insert(&customer_id, &customer);
-            self.customer_whitelist.push(customer_account);
             self.customer_account_id.insert(&customer_account, &customer_id);
             customer
         }
@@ -334,14 +324,14 @@ mod food_delivery {
             delivery_address: String,
         ) -> Order {
             let customer_account = Self::env().caller();
-            assert!(self.customer_whitelist.contains(&customer_account), "Only customer can submit order!");
-            assert!(self.food_data.contains(&food_id), "Food not exist!");
-            assert!(delivery_address.len() > 3, "Delivery address must be at least 4 characters!");
+            assert!(self.customer_account_id.contains(&customer_account), "The current caller is not the customer AccountId");
+            assert!(self.food_data.contains(&food_id), "Food does not exist");
+            assert!(delivery_address.len() > 0, "Delivery address must not be empty");
             let customer_id = self.customer_account_id.get(&customer_account).unwrap();
             let restaurant_id = self.food_data.get(&food_id).unwrap().restaurant_id;
             let courier_id = 0;
             let price = Self::env().transferred_value();
-            assert!(self.food_data.get(&food_id).unwrap().price == price, "You must pay same of price!");
+            assert!(self.food_data.get(&food_id).unwrap().price == price, "You must pay same of price");
             let eta = 0;
             let timestamp = Self::env().block_timestamp();
             let status = OrderStatus::OrderSubmitted;
@@ -387,11 +377,12 @@ mod food_delivery {
             delivery_id: DeliveryId,
         ) -> bool {
             let customer_account = Self::env().caller();
-            assert!(self.customer_whitelist.contains(&customer_account), "only customer can submit order!");
+            assert!(self.customer_account_id.contains(&customer_account), "The current caller is not the customer AccountId");
             let customer_id = self.customer_account_id.get(&customer_account).unwrap();
-            assert!(self.delivery_data.contains(&delivery_id), "Delivery not exist!");
+            assert!(self.delivery_data.contains(&delivery_id), "Delivery does not exist");
             let order_id = self.delivery_data.get(&delivery_id).unwrap().order_id;
-            assert!(self.order_data.get(&order_id).unwrap().customer_id == customer_id, "not customer of this order!");
+            assert!(self.order_data.get(&order_id).unwrap().status == OrderStatus::OrderDelivered, "This order is not Delivered");
+            assert!(self.order_data.get(&order_id).unwrap().customer_id == customer_id, "This caller is not customer of this order");
             let mut order = self.order_data.get(&order_id).unwrap();
             let status = OrderStatus::DeliveryAcceptted;
             order.status = status;
@@ -432,9 +423,9 @@ mod food_delivery {
             eta: u64,
         ) -> Food {
             let restaurant_account = Self::env().caller();
-            assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can add food!");
-            assert!(food_name.len() > 3, "Food name must be at least 4 characters!");
-            assert!(description.len() > 3, "Food description must be at least 4 characters!");
+            assert!(self.restaurant_account_id.contains(&restaurant_account), "The current caller is not the restaurant AccountId");
+            assert!(food_name.len() > 0, "Food name must not be empty");
+            assert!(description.len() > 0, "Food description must not be empty");
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
             let food_id = self.food_id;
             self.food_id += 1;
@@ -475,12 +466,12 @@ mod food_delivery {
             eta: u64,
         ) -> Food {
             let restaurant_account = Self::env().caller();
-            assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can update food!");
+            assert!(self.restaurant_account_id.contains(&restaurant_account), "The current caller is not the restauarnat caller");
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
-            assert!(self.food_data.contains(&food_id), "Food not exist!");
-            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this food!");
-            assert!(food_name.len() > 3, "Food name must be at least 4 characters!");
-            assert!(description.len() > 3, "Food description must be at least 4 characters!");
+            assert!(self.food_data.contains(&food_id), "Food does not exist");
+            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "This caller is not owner of this food");
+            assert!(food_name.len() > 0, "Food name must not be empty");
+            assert!(description.len() > 0, "Food description must not be empty");
             let food = Food {
                 food_name,
                 restaurant_id,
@@ -510,11 +501,11 @@ mod food_delivery {
             order_id: OrderId,
         ) -> bool {
             let restaurant_account = Self::env().caller();
-            assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can confirm order!");
+            assert!(self.restaurant_account_id.contains(&restaurant_account), "The current caller is not the restaurant AccountId");
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
-            assert!(self.order_data.contains(&order_id), "Order not exist!");
+            assert!(self.order_data.contains(&order_id), "Order does not exist");
             let food_id = self.order_data.get(&order_id).unwrap().food_id;
-            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this order!");
+            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "This caller is not restaurant of this order");
             let mut order = self.order_data.get(&order_id).unwrap();
             let status = OrderStatus::OrderConfirmed;
             order.status = status;
@@ -537,12 +528,12 @@ mod food_delivery {
             order_id: OrderId,
         ) -> Delivery {
             let restaurant_account = Self::env().caller();
-            assert!(self.restaurant_whitelist.contains(&restaurant_account), "Only restaurant can confirm order!");
+            assert!(self.restaurant_account_id.contains(&restaurant_account), "The current caller is not the restaurant AccountId");
             let restaurant_id = self.restaurant_account_id.get(&restaurant_account).unwrap();
-            assert!(self.order_data.contains(&order_id), "Order not exist!");
-            assert!(self.order_data.get(&order_id).unwrap().status == OrderStatus::OrderConfirmed, "This order is not confirmed!");
+            assert!(self.order_data.contains(&order_id), "Order does not exist");
+            assert!(self.order_data.get(&order_id).unwrap().status == OrderStatus::OrderConfirmed, "This order is not confirmed");
             let food_id = self.order_data.get(&order_id).unwrap().food_id;
-            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "Not owner of this order!");
+            assert!(self.food_data.get(&food_id).unwrap().restaurant_id == restaurant_id, "This caller is not restaurant of this order");
             let mut order = self.order_data.get(&order_id).unwrap();
             let status = OrderStatus::WaitingDeliver;
             order.status = status;
@@ -592,11 +583,13 @@ mod food_delivery {
             delivery_id: DeliveryId,
         ) -> bool {
             let caller = Self::env().caller();
-            assert!(self.courier_whitelist.contains(&caller), "Only courier can confirm devliery!");
-            assert!(self.delivery_data.contains(&delivery_id), "Delivery not exist!");
-            assert!(self.delivery_data.get(&delivery_id).unwrap().status == DeliveryStatus::Waiting, "This delivery is already picked up!");
+            assert!(self.courier_account_id.contains(&caller), "The current caller is not courier AccountId");
+            assert!(self.delivery_data.contains(&delivery_id), "Delivery does not exist");
+            assert!(self.delivery_data.get(&delivery_id).unwrap().status == DeliveryStatus::Waiting, "This delivery is already picked up");
             let mut delivery = self.delivery_data.get(&delivery_id).unwrap();
+            let courier_id = self.courier_account_id.get(&caller).unwrap();
             let status = DeliveryStatus::PickUp;
+            delivery.courier_id = courier_id;
             delivery.status = status;
             self.delivery_data.insert(&delivery_id, &delivery);
             let order_id = self.delivery_data.get(&delivery_id).unwrap().order_id;
@@ -619,11 +612,11 @@ mod food_delivery {
             phone_number: String,
         ) -> Restaurant {
             let caller = Self::env().caller();
-            assert!(caller == self.manager, "Only manager can add restaurant!");
-            assert!(!self.restaurant_whitelist.contains(&restaurant_account), "Already exist restaurant!");
-            assert!(restaurant_name.len() > 3, "Restaurant name must be at least 4 characters!");
-            assert!(restaurant_address.len() > 3, "Restaurant adddress must be at least 4 characters!");
-            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
+            assert!(caller == self.manager, "The caller is not the manager AccountId");
+            assert!(!self.restaurant_account_id.contains(&restaurant_account), "Restaurant already exists");
+            assert!(restaurant_name.len() > 0, "Restaurant name must not be empty");
+            assert!(restaurant_address.len() > 0, "Restaurant adddress must not be empty");
+            assert!(phone_number.len() > 0, "Phone number must not be empty");
             let restaurant_id = self.restaurant_id;
             self.restaurant_id += 1;
             let restaurant = Restaurant {
@@ -634,7 +627,6 @@ mod food_delivery {
             };
             self.restaurants.insert(&restaurant_id, &restaurant);
             self.restaurant_account_id.insert(&restaurant_account, &restaurant_id);
-            self.restaurant_whitelist.push(restaurant_account);
             let restaurant_name = self.restaurants.get(&restaurant_id).unwrap().restaurant_name;
             let restaurant_address = self.restaurants.get(&restaurant_id).unwrap().restaurant_address;
             let phone_number = self.restaurants.get(&restaurant_id).unwrap().phone_number;
@@ -658,11 +650,11 @@ mod food_delivery {
             phone_number: String,
         ) -> Courier {
             let caller = Self::env().caller();
-            assert!(caller == self.manager, "Only manager can add courier!");
-            assert!(!self.courier_whitelist.contains(&courier_account), "Already exist courier!");
-            assert!(courier_name.len() > 3, "Courier name must be at least 4 characters!");
-            assert!(courier_address.len() > 3, "Courier adddress must be at least 4 characters!");
-            assert!(phone_number.len() > 3, "Phone number must be at least 4 characters!");
+            assert!(caller == self.manager, "The current caller is not the manager AccountId");
+            assert!(!self.courier_account_id.contains(&courier_account), "Courier already exists");
+            assert!(courier_name.len() > 0, "Courier name must not be empty");
+            assert!(courier_address.len() > 0, "Courier adddress must not be empty");
+            assert!(phone_number.len() > 0, "Phone number must not be empty");
             let courier_id = self.courier_id;
             self.courier_id += 1;
             let courier = Courier {
@@ -673,7 +665,6 @@ mod food_delivery {
             };
             self.couriers.insert(&courier_id, &courier);
             self.courier_account_id.insert(&courier_account, &courier_id);
-            self.courier_whitelist.push(courier_account);
             let courier_name = self.couriers.get(&courier_id).unwrap().courier_name;
             let courier_address = self.couriers.get(&courier_id).unwrap().courier_address;
             let phone_number = self.couriers.get(&courier_id).unwrap().phone_number;
@@ -694,7 +685,7 @@ mod food_delivery {
             new_account: AccountId,
         ) -> bool {
             let caller = Self::env().caller();
-            assert!(caller == self.manager, "Only manager can add deliver!");
+            assert!(caller == self.manager, "The current caller is not the manager AccountId");
             self.manager = new_account;
             true
         }
@@ -702,7 +693,7 @@ mod food_delivery {
         // Function that get eta deadline using order identifier.
         #[ink(message)]
         pub fn get_eta(&self, order_id: OrderId) -> u64 {
-            assert!(self.order_data.contains(&order_id), "Order does not exist!");
+            assert!(self.order_data.contains(&order_id), "Order does not exist");
             let timestamp = self.order_data.get(&order_id).unwrap().timestamp;
             let cur_timestamp = Self::env().block_timestamp();
             let order_eta = self.order_data.get(&order_id).unwrap().eta;
@@ -717,14 +708,14 @@ mod food_delivery {
         // Function that get order information using order identifier.
         #[ink(message)]
         pub fn get_order_from_id(&self, order_id: OrderId) -> Order {
-            assert!(self.order_data.contains(&order_id), "Order does not exist!");
+            assert!(self.order_data.contains(&order_id), "Order does not exist");
             self.order_data.get(&order_id).unwrap()
         }
     
         // Function that get all order information placed in a restaurant.
         #[ink(message)]
         pub fn get_order_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Order> {
-            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
+            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist");
             let order_data = self.restaurant_order_data.get(&restaurant_id).unwrap_or(Vec::new());
             let mut order_vec = Vec::new();
             for i in order_data.iter() {
@@ -736,7 +727,7 @@ mod food_delivery {
         // Function that get all order information placed by customers.
         #[ink(message)]
         pub fn get_order_from_customer(&self, customer_id: CustomerId) -> Vec<Order> {
-            assert!(self.customers.contains(&customer_id), "Restaurant does not exist!");
+            assert!(self.customers.contains(&customer_id), "Restaurant does not exist");
             let order_data = self.customer_order_data.get(&customer_id).unwrap_or(Vec::new());
             let mut order_vec = Vec::new();
             for i in order_data.iter() {
@@ -764,14 +755,14 @@ mod food_delivery {
         // Function that get food information using food identifier.
         #[ink(message)]
         pub fn get_food_from_id(&self, food_id: FoodId) -> Food {
-            assert!(self.food_data.contains(&food_id), "Order does not exist!");
+            assert!(self.food_data.contains(&food_id), "Order does not exist");
             self.food_data.get(&food_id).unwrap()
         }
         
         // Function that get all food information posted by the restaurant.
         #[ink(message)]
         pub fn get_food_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Food> {
-            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
+            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist");
             let food_data = self.restaurant_food_data.get(&restaurant_id).unwrap_or(Vec::new());
             let mut food_vec = Vec::new();
             for i in food_data.iter() {
@@ -799,14 +790,14 @@ mod food_delivery {
         // Function that get delivery information using delivery identifier.
         #[ink(message)]
         pub fn get_delivery_from_id(&self, delivery_id: DeliveryId) -> Delivery {
-            assert!(self.delivery_data.contains(&delivery_id), "Order does not exist!");
+            assert!(self.delivery_data.contains(&delivery_id), "Order does not exist");
             self.delivery_data.get(&delivery_id).unwrap()
         }
         
         // Function that get all delivery information ordered form the forwarder.
         #[ink(message)]
         pub fn get_delivery_from_courier(&self, courier_id: CourierId) -> Vec<Delivery> {
-            assert!(self.couriers.contains(&courier_id), "Courier does not exist!");
+            assert!(self.couriers.contains(&courier_id), "Courier does not exist");
             let delivery_data = self.courier_delivery_data.get(&courier_id).unwrap_or(Vec::new());
             let mut delivery_vec = Vec::new();
             for i in delivery_data.iter() {
@@ -818,7 +809,7 @@ mod food_delivery {
         // Function that get all delivery information requested by restaurant.
         #[ink(message)]
         pub fn get_delivery_from_restaurant(&self, restaurant_id: RestaurantId) -> Vec<Delivery> {
-            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist!");
+            assert!(self.restaurants.contains(&restaurant_id), "Restaurant does not exist");
             let delivery_data = self.restaurant_delivery_data.get(&restaurant_id).unwrap_or(Vec::new());
             let mut deliver_vec = Vec::new();
             for i in delivery_data.iter() {
@@ -830,7 +821,7 @@ mod food_delivery {
         // Function taht get all delivery information delivered to customer.
         #[ink(message)]
         pub fn get_delivery_from_customer(&self, customer_id: CustomerId) -> Vec<Delivery> {
-            assert!(self.customers.contains(&customer_id), "Customer does not exist!");
+            assert!(self.customers.contains(&customer_id), "Customer does not exist");
             let delivery_data = self.customer_delivery_data.get(&customer_id).unwrap_or(Vec::new());
             let mut delivery_vec = Vec::new();
             for i in delivery_data.iter() {
